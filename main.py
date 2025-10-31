@@ -25,17 +25,14 @@ app.add_middleware(
 IA_SERVER_URL = "http://ia-service:8080"
 
 class AccidentData(BaseModel):
-    accident_date: str
     day_of_week: str
     junction_control: str
     junction_detail: str
     light_conditions: str
-    speed_limit: int
-    road_type: str
-    number_of_casualties: int
     road_surface_conditions: str
+    road_type: str
+    speed_limit: int
     urban_or_rural_area: str
-    time:str
     weather_conditions: str
 
 class PredictionResult(BaseModel):
@@ -53,7 +50,7 @@ async def health_check():
     try:
         logger.info("🔍 Vérification santé IA...")
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{IA_SERVICE_URL}/health", timeout=5.0)
+            response = await client.get(f"{IA_SERVER_URL}/health", timeout=5.0)
             ia_health = response.json()
 
         logger.info(f"IA santé: {ia_health}")
@@ -71,20 +68,18 @@ async def health_check():
         }
 @app.post("/api/predict")
 async def predict(data: dict):
+    print(data)
     try:
         ia_data = {
-            "Accident_Date": data.accident_date,
-            "Day_of_Week": data.day_of_week,
-            "Junction_Control": data.junction_control,
-            "Junction_Detail": data.junction_detail,
-            "Light_Conditions": data.light_conditions,
-            "Speed_limit": data.speed_limit,
-            "Road_Type": data.road_type,
-            "Number_of_Casualties": data.number_of_casualties,
-            "Road_Surface_Conditions": data.road_surface_conditions,
-            "Urban_or_Rural_Area": data.urban_or_rural_area,
-            "Time": data.time,
-            "Weather_Conditions": data.weather_conditions
+            "day_of_week": data['day_of_week'],
+            "junction_control": data['junction_control'],
+            "junction_detail": data['junction_detail'],
+            "light_conditions": data['light_conditions'],
+            "road_surface_conditions": data['road_surface_conditions'],
+            "road_type": data['road_type'],
+            "speed_limit": data['speed_limit'],
+            "urban_or_rural_area": data['urban_or_rural_area'],
+            "weather_conditions": data['weather_conditions']
         }
 
         print(f"Données reçues: {ia_data}")
@@ -106,6 +101,8 @@ async def predict(data: dict):
                     confidence=ia_result["confidence"]
                 )
             else:
+                error_detail = f"Erreur IA {response.status_code}: {response.text}"
+                print(f"❌ Erreur détaillée: {error_detail}")
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=f"Erreur IA: {response.text}"
@@ -129,21 +126,18 @@ async def test_prediction():
     logger.info("Test prédiction démarré")
 
     test_data = {
-        "accident_date": "3/2/2022",
         "day_of_week": "Tuesday",
         "junction_control": "Give way or uncontrolled",
         "junction_detail": "T or staggered junction",
         "light_conditions": "Daylight",
-        "number_of_casualties": 1,
         "road_surface_conditions": "Dry",
         "road_type": "Single carriageway",
         "speed_limit": 30,
-        "time": "14:55",
         "urban_or_rural_area": "Urban",
         "weather_conditions": "Fine no high winds"
     }
     logger.info("📋 Données de test créées")
-    result = await predict(AccidentData(**test_data))
+    result = await predict(test_data)
     logger.info(f"Test réussi: {result}")
 
     return result
